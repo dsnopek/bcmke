@@ -1,0 +1,13 @@
+;  $Id: domain_conf.info,v 1.4 2008/03/26 02:47:31 agentken Exp $
+name = Domain Configuration
+description = Advanced site configuration options for Domain Access.
+package = Domain Access
+dependencies[] = domain
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-05-16
+version = "6.x-2.5"
+core = "6.x"
+project = "domain"
+datestamp = "1274027105"
+

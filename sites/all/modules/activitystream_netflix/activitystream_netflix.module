@@ -1,0 +1,56 @@
+<?php
+// $Id: activitystream_netflix.module,v 1.1 2009/09/19 01:48:17 toddejohnson Exp $
+
+/**
+ * @file
+ * The module file for netflix feed
+ */
+/**
+ * Hook that calls feed module to process the feed 
+ * @param string $user Contains uid, userid, password, feed entered on user's settings page
+ */
+function activitystream_netflix_streamapi($user) {
+  // User doesn't have a identi.ca username entered
+  if (!$user->feed) {
+    return;
+  }
+  
+  // Use activitystream_feed module to pull information
+  $items = activitystream_feed_streamapi($user);
+  return $items;
+}
+/**
+ * Hook for user settings form.
+ * Will be added by activitystream module
+ * @param array $edit Values of the form fields
+ */
+function activitystream_netflix_activitystream_settings(&$edit) {
+  $form['activitystream_netflix'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Netflix settings')
+  );
+  $form['activitystream_netflix']['activitystream_netflix_feed'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Feed URL'),
+    '#default_value' => empty($edit['activitystream_netflix_feed']) ? '' : $edit['activitystream_netflix_feed'],
+    '#description' => t('Your Netflix RSS Feed URL.  Can be found at ') .'<a href="http://www.netflix.com/RSSFeeds">http://www.netflix.com/RSSFeeds</a>'
+  );
+  return $form;
+}
+function theme_activitystream_netflix_icon() {
+  return theme_image(drupal_get_path('module', 'activitystream_netflix') .'/netflix.png', 'Netflix');
+}
+function theme_activitystream_netflix_item($activity) {
+  $node = node_load($activity->nid);
+  $date = theme('activitystream_date', $node->created);
+  $user = activitystream_user_load($node->uid);
+  $name = theme('activitystream_username', $user);
+  return '<span class="activitystream-item">'. theme('activitystream_netflix_icon') .' <span>'. $name .' '. l($node->title, $activity->link) .'<span class="activitystream-created">'. $date .'</span></span>'. l('#', 'node/'. $node->nid, array('class' => 'permalink')) .'</span>';
+}
+function activitystream_netflix_theme() {
+  return array(
+    'activitystream_netflix_icon' => array('arguments' => array()),
+    'activitystream_netflix_item' => array('arguments' => array('activity' => NULL))
+    );
+}
+

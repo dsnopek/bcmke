@@ -1,0 +1,80 @@
+<?php
+// $Id: activitystream_drupalcode.module,v 1.1 2010/01/18 23:10:49 cweagans Exp $
+
+/**
+ * @author : Cameron Eagans (me@cweagans.net)
+ * @file
+ * The module for importing Drupal.org commit activity.
+ */
+
+/*
+ * The API passes in a $user object that contains four properties:
+ * uid, userid, password, feed. These properties contain the account
+ * information entered into the user's settings page, along with the 
+ * uid of their Drupal account.
+ */
+function activitystream_drupalcode_streamapi($user) {
+  // This user doesn't have a Github ID entered
+  if (!$user->userid) {
+    return;
+  }
+  
+  // Use the activitystream_feed module to pull in the user's github activity.
+  $user->feed = 'http://drupal.org/cvs?rss=true&uid=' . $user->userid;
+  $activity = activitystream_feed_streamapi($user);
+  return $activity;
+}
+
+/*
+ * Implement a user settings form hook. Modules should build a form
+ * using an array that mirrors the Drupal form API. activitystream.module
+ * will add the form elements to a tab called Activity Streams on the
+ * user's Profile Edit page. Fields should be named
+ * yourmodulename_fieldname. For instance, to store the user ID for 
+ * Flickr, the field name is activitystream_flickr_userid
+ *
+ * To avoid collisions with other activitystream module's forms
+ * use your module's name as the form array's key.
+ *
+ * @param $edit
+ *   The values of the form fields, used for setting defaults
+ * 
+ */
+function activitystream_drupalcode_activitystream_settings(&$edit) {
+	//print_r($edit);
+  $form['activitystream_drupalcode'] = array(
+     '#type' => 'fieldset',
+    '#title' => t('Drupal.org settings')
+  );
+  $form['activitystream_drupalcode']['activitystream_drupalcode_userid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('User ID'),
+    '#default_value' => empty($edit['activitystream_drupalcode_userid']) ? '' : $edit['activitystream_drupalcode_userid'],
+    '#description' => t('The uid for your Drupal.org user account. Ex: <em>123456</em>')
+  );
+  return $form;  
+}
+
+function theme_activitystream_drupalcode_icon() {
+  return theme_image(drupal_get_path('module', 'activitystream_drupalcode') .'/druplicon.png', 'Drupal.org');
+}
+
+function theme_activitystream_drupalcode_item($activity) {
+  $node = node_load($activity->nid);
+  $date = theme('activitystream_date', $node->created);
+  $user = activitystream_user_load($node->uid);
+  $name = theme('activitystream_username', $user);
+  return '<span class="activitystream-item">'. theme('activitystream_drupalcode_icon') ." <span>". l($node->title, $activity->link) ." <span class=\"activitystream-created\">$date</span></span>". l('#', 'node/'. $node->nid, array('class' => 'permalink')) .'</span>';
+}
+
+function activitystream_drupalcode_theme() {
+  return array(
+    'activitystream_drupalcode_icon' => array(
+      'arguments' => array(),
+    ),
+    'activitystream_drupalcode_item' => array(
+      'arguments' => array('activity' => NULL),
+    ),
+  );
+}
+

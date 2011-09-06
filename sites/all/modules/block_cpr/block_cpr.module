@@ -1,0 +1,107 @@
+<?php
+// $Id: block_cpr.module,v 1.2 2009/11/19 18:39:09 njt1982 Exp $
+
+/**
+ * @file
+ * Block CPR is a module to provide weighted role specific content. Drupal allows block access per role,
+ * but what if a user has 1 or more roles beside authenticated? Odds are, you would see two or more blocks as
+ * each one matches a role the user has. This module gets around this by allowing weights to decide which order
+ * the roles are checked. The first match is the one that shows. Each roles gets its own content.
+ */
+
+/**
+ * Implementation of hook_theme().
+ */
+function block_cpr_theme($existing, $type, $theme, $path) {
+  return array(
+    'block_cpr_block_settings_form' => array(
+      'arguments' => array('form' => NULL),
+    )
+  );
+}
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function block_cpr_menu() {
+  $items = array();
+
+  $items['admin/build/block/cpr'] = array(
+    'title' => 'CPR Blocks',
+    'description' => 'Configure block containing content for specific weighted roles.',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'block_cpr_overview_form',
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'block_cpr.admin.inc',
+  );
+  $items['admin/build/block/cpr/list'] = array(
+    'title' => 'List',
+    'access arguments' => array('administer blocks'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['admin/build/block/cpr/add'] = array(
+    'title' => 'Add',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('block_cpr_block_settings_form'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'block_cpr.admin.inc',
+  );
+  $items['admin/build/block/cpr/edit/%'] = array(
+    'title' => 'Edit',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('block_cpr_block_settings_form', 5),
+    'type' => MENU_CALLBACK,
+    'file' => 'block_cpr.admin.inc',
+  );
+  $items['admin/build/block/cpr/delete/%'] = array(
+    'title' => 'Delete',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('block_cpr_block_delete_confirm_form', 5),
+    'type' => MENU_CALLBACK,
+    'file' => 'block_cpr.admin.inc',
+  );
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_block().
+ */
+function block_cpr_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks = array();
+      $settings = variable_get('block_cpr_settings', array());
+      foreach ($settings as $cpr_delta => $cpr) {
+        $blocks[$cpr_delta] = array('info' => t('CPR Block: !title', array('!title' => $cpr_delta)));
+      }
+      return $blocks;
+
+    case 'view' :
+      return block_cpr_block_view($delta);
+  }
+}
+
+
+/**
+ *  Handler for displaying a blocks contents
+ */
+function block_cpr_block_view($delta) {
+  $settings = variable_get('block_cpr_settings', array());
+  if (isset($settings[$delta])) {
+    global $user;
+    foreach ($settings[$delta] as $role_id => $block_settings) {
+      if (isset($user->roles[$role_id])) {
+        return array(
+          'subject' => '',
+          'content' => check_markup($settings[$delta][$role_id]['content']['body'], $settings[$delta][$role_id]['content']['format'], FALSE),
+        );
+      }
+    }
+  }
+}

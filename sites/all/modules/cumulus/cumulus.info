@@ -1,0 +1,13 @@
+;$Id: cumulus.info,v 1.1.2.2 2009/01/27 09:01:16 lut4rp Exp $
+name = Cumulus
+description = "Provides a Flash-based 3D tag cloud."
+core = 6.x
+dependencies[] = tagadelic
+package = "Taxonomy"
+
+; Information added by drupal.org packaging script on 2010-08-03
+version = "6.x-1.4"
+core = "6.x"
+project = "cumulus"
+datestamp = "1280848873"
+

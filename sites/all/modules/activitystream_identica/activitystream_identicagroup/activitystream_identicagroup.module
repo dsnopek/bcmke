@@ -1,0 +1,56 @@
+<?php
+// $Id: activitystream_identicagroup.module,v 1.1 2010/01/06 23:50:08 toddejohnson Exp $
+/**
+ * @file
+ * The module file for identi.ca group feed
+ */
+/**
+ * Hook that calls feed module to process the feed 
+ * @param string $user Contains uid, userid, password, feed entered on user's settings page
+ */
+function activitystream_identicagroup_streamapi($user) {
+  // User doesn't have a identi.ca username entered
+  if (!$user->userid) {
+    return;
+  }
+  
+  // Use activitystream_feed module to pull information
+  $user->feed = 'http://identi.ca/group/'. $user->userid .'/rss';
+  $items = activitystream_feed_streamapi($user);
+  return $items;
+}
+/**
+ * Hook for user settings form.
+ * Will be added by activitystream module
+ * @param array $edit Values of the form fields
+ */
+function activitystream_identicagroup_activitystream_settings(&$edit) {
+  $form['activitystream_identicagroup'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Identi.ca group settings')
+  );
+  $form['activitystream_identicagroup']['activitystream_identicagroup_userid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Group Name'),
+    '#default_value' => empty($edit['activitystream_identicagroup_userid']) ? '' : $edit['activitystream_identicagroup_userid'],
+    '#description' => t('Your Identi.ca group\'s name')
+  );
+  return $form;
+}
+function theme_activitystream_identicagroup_icon() {
+  return theme('image', drupal_get_path('module', 'activitystream_identicagroup') .'/identicagroup.png', 'Identi.ca');
+}
+function theme_activitystream_identicagroup_item($activity) {
+  $node = node_load($activity->nid);
+  $date = theme('activitystream_date', $node->created);
+  $user = activitystream_user_load($node->uid);
+  $name = theme('activitystream_username', $user);
+  return '<span class="activitystream-item">'. theme('activitystream_identicagroup_icon') .' <span>'. $name ." ". l($node->title, $activity->link) .'<span class="activitystream-created">'. $date .'</span></span>'. l('#', 'node/'. $node->nid, array('class' => 'permalink')) .'</span>';
+}
+function activitystream_identicagroup_theme() {
+  return array(
+    'activitystream_identicagroup_icon' => array('arguments' => array()),
+    'activitystream_identicagroup_item' => array('arguments' => array('activity' => NULL))
+    );
+}
+

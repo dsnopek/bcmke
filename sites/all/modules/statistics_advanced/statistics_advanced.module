@@ -1,0 +1,288 @@
+<?php
+// $Id: statistics_advanced.module,v 1.1.2.25 2009/05/26 03:57:48 davereid Exp $
+
+/**
+ * @file
+ * Adds advanced settings and features for the core Statistics module.
+ */
+
+/**
+ * Implementation of hook_perm().
+ */
+function statistics_advanced_perm() {
+  return array(
+    'exclude visits from the access log',
+    'exclude visits from counters',
+  );
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function statistics_advanced_menu() {
+  $items['admin/reports/settings/default'] = array(
+    'title' => 'Settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file path' => drupal_get_path('module', 'statistics'),
+  );
+  $items['admin/reports/settings/advanced'] = array(
+    'title' => 'Advanced settings',
+    'description' => 'Configure advanced statistics settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('statistics_advanced_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'weight' => 10,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'statistics_advanced.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_link_alter().
+ *
+ * Removes the node views counter for certain node types.
+ */
+function statistics_advanced_link_alter(&$links, $node) {
+  // @todo Remove when http://drupal.org/node/321295 is fixed.
+  if (_statistics_advanced_check_link_alter($links, $node)) {
+    return;
+  }
+
+  if (isset($links['statistics_counter'])) {
+    $counter_node_types = statistics_advanced_var('counter_node_types');
+    if (isset($counter_node_types[$node->type]) && !$counter_node_types[$node->type]) {
+      unset($links['statistics_counter']);
+    }
+  }
+}
+
+/**
+ * Check that the correct parameters are passed to hook_link_alter().
+ *
+ * A lot of modules that were convered from Drupal 5 to 6 did not switch the
+ * parameters around and cause errors.
+ *
+ * @todo Remove when http://drupal.org/node/321295 is fixed.
+ */
+function _statistics_advanced_check_link_alter($links, $node) {
+  if (!is_array($links) || !is_object($node)) {
+    $message = 'Invalid parameters for hook_link_alter(). Please report this message to <a href="http://drupal.org/node/321295">http://drupal.org/node/321295</a>.';
+    $backtrace = array_slice(debug_backtrace(), 2, 2);
+    foreach ($backtrace as $index => $caller) {
+      $message .= '<br />'. strtr('line @line in @file (@function)', array('@file' => $caller['file'], '@line' => $caller['line'], '@function' => $caller['function']));
+    }
+    drupal_set_message($message, 'error', FALSE);
+    watchdog('statistics_adv', $message, array(), WATCHDOG_ERROR);
+    return TRUE;
+  }
+}
+
+/**
+ * Implementation of hook_boot().
+ *
+ * Checks to see if this is a unique content view by checking the 'accesslog'
+ * table for anonymous views and the 'history' table for authenticated user
+ * views.
+ */
+function statistics_advanced_boot() {
+  global $user;
+
+  // Load path handling.
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_PATH);
+
+  if (_statistics_advanced_is_node_visit() && statistics_advanced_var('ignore_repeat_views')) {
+    // Save the current user's uid as we may find from the accesslog table that
+    // the user has logged out but has a record in the history table.
+    $uid = $user->uid;
+
+    if (!$uid && variable_get('statistics_enable_access_log', 0)) {
+      $accesslog = db_fetch_object(db_query_range("SELECT uid, timestamp FROM {accesslog} WHERE (path = '%s' OR uid > 0) AND sid = '%s' ORDER BY timestamp DESC", array(':path' => $_GET['q'], ':sid' => session_id()), 0, 1));
+      if ($accesslog) {
+        if ($accesslog->uid) {
+          $uid = $accesslog->uid;
+        }
+        else {
+          _statistics_advanced_ignore('nodecounter', $accesslog->timestamp);
+        }
+      }
+    }
+
+    if ($uid) {
+      $historylog = db_result(db_query("SELECT timestamp FROM {history} WHERE uid = %d AND nid = %d", array(':uid' => $uid, ':nid' => arg(1))));
+      if ($historylog) {
+        // Repeat user visit (same user id and node id in history table)
+        _statistics_advanced_ignore('nodecounter', $historylog);
+      }
+    }
+  }
+}
+
+function _statistics_advanced_is_403_or_404() {
+  global $base_root;
+  $headers = '';
+
+  if (function_exists('headers_list')) {
+    $headers = implode("\n", headers_list());
+  }
+  elseif (function_exists('drupal_set_header')) {
+    $headers = drupal_set_header();
+  }
+  elseif (variable_get('cache', CACHE_DISABLED) == CACHE_NORMAL) {
+    $headers = db_result(db_query("SELECT headers FROM {cache_page} WHERE cid = '%s'", array(':cid' => $base_root . request_uri())));
+  }
+
+  return preg_match('/404 Not Found|403 Forbidden/i', $headers);
+}
+
+/**
+ * Determine if this page request is a node visit (e.g. node/x).
+ */
+function _statistics_advanced_is_node_visit() {
+  static $is_node_visit;
+  if (!isset($is_node_visit)) {
+    $is_node_visit = arg(0) == 'node' && is_numeric(arg(1)) && arg(2) == '' && variable_get('statistics_count_content_views', 0);
+  }
+  return $is_node_visit;
+}
+
+/**
+ * Implementation of hook_exit().
+ *
+ * Delete unwanted records.
+ */
+function statistics_advanced_exit() {
+  global $user;
+
+  if (_statistics_advanced_is_node_visit()) {
+    if (_statistics_advanced_is_403_or_404()) {
+      // Ignore 404 and 403 node visits.
+      _statistics_advanced_ignore('nodecounter', TRUE);
+    }
+    elseif (statistics_advanced_user_access('exclude visits from counters')) {
+      _statistics_advanced_ignore('nodecounter', TRUE);
+    }
+    //else {
+    //  // If the node has been previously read by the user and has changed since
+    //  // the last read, count it as a new read.
+    //  $changed = db_result(db_query("SELECT changed FROM {node} WHERE nid = %d", array(':nid' => arg(1))));
+    //  $last_read = _statistics_advanced_ignore('nodecounter');
+    //  if ($last_read && $changed > $last_read) {
+    //    _statistics_advanced_ignore('nodecounter', FALSE);
+    //  }
+    //}
+  }
+
+  // Check if user's access log entry should be ignored based on user role.
+  if (statistics_advanced_user_access('exclude visits from the access log')) {
+    _statistics_advanced_ignore('accesslog', TRUE);
+  }
+
+  // Check if the user's browser is a crawler.
+  if (!$user->uid && statistics_advanced_var('ignore_crawlers') && module_exists('browscap') && function_exists('browscap_get_browser')) {
+    drupal_load('module', 'browscap');
+    $browser = browscap_get_browser();
+    if (!empty($browser['crawler'])) {
+      _statistics_advanced_ignore('accesslog', TRUE);
+      if (_statistics_advanced_is_node_visit()) {
+        _statistics_advanced_ignore('nodecounter', TRUE);
+      }
+      if (variable_get('browscap_monitor', 0) && function_exists('browscap_unmonitor')) {
+        browscap_unmonitor();
+      }
+    }
+  }
+
+  if (_statistics_advanced_ignore('nodecounter')) {
+    db_query("UPDATE {node_counter} SET daycount = daycount - 1, totalcount = totalcount - 1 WHERE nid = %d AND totalcount > 0 AND daycount > 0", array(':nid' => arg(1)));
+  }
+
+  if (_statistics_advanced_ignore('accesslog')) {
+    db_query("DELETE FROM {accesslog} WHERE (sid = '%s' AND uid = 0) OR (uid = %d AND uid > 0)", array(':sid' => session_id(), ':uid' => $user->uid));
+  }
+}
+
+/**
+ * A copy of user.module's user_access() function so we do not need to load
+ * the entire user.module during cached visits.
+ */
+function statistics_advanced_user_access($string, $account = NULL) {
+  // If user.module is loaded, use that function call since it most likely has
+  // the permissions already cached.
+  if (function_exists('user_access')) {
+    return user_access($string, $account);
+  }
+
+  static $perm = array();
+
+  if (!isset($account)) {
+    global $user;
+    $account = $user;
+  }
+
+  // User #1 has all privileges:
+  if ($account->uid == 1) {
+    return TRUE;
+  }
+
+  // To reduce the number of SQL queries, we cache the user's permissions
+  // in a static variable.
+  if (!isset($perm[$account->uid])) {
+    $result = db_query("SELECT p.perm FROM {role} r INNER JOIN {permission} p ON p.rid = r.rid WHERE r.rid IN (". db_placeholders($account->roles) .")", array_keys($account->roles));
+
+    $perms = array();
+    while ($row = db_fetch_object($result)) {
+      $perms += array_flip(explode(', ', $row->perm));
+    }
+    $perm[$account->uid] = $perms;
+  }
+
+  return isset($perm[$account->uid][$string]);
+}
+
+/**
+ * Internal function to track which records to ignore.
+ */
+function _statistics_advanced_ignore($type, $value = NULL) {
+  static $ignores = array();
+  if (isset($value)) {
+    $ignores[$type] = $value;
+  }
+  else {
+    return isset($ignores[$type]) ? $ignores[$type] : FALSE;
+  }
+}
+
+/**
+ * Internal default variables for statistics_advanced_var().
+ */
+function statistics_advanced_variables() {
+  return array(
+    'statistics_advanced_ignore_crawlers' => 0,
+    'statistics_advanced_ignore_repeat_views' => 1,
+    'statistics_advanced_counter_node_types' => array(),
+    // Deleted variables set to NULL so they can still be removed if found
+    // during uninstall.
+    'statistics_advanced_ignore_user_roles' => NULL,
+    'statistics_advanced_ignore_roles' => NULL,
+  );
+}
+
+/**
+ * Internal implementation of variable_get().
+ */
+function statistics_advanced_var($name, $default = NULL) {
+  static $defaults = NULL;
+  if (!isset($defaults)) {
+    $defaults = statistics_advanced_variables();
+  }
+
+  $name = 'statistics_advanced_'. $name;
+
+  if (!isset($defaults[$name])) {
+    trigger_error(t('Default variable for %variable not found.', array('%variable' => $name)));
+  }
+
+  return variable_get($name, isset($default) || !isset($defaults[$name]) ? $default : $defaults[$name]);
+}

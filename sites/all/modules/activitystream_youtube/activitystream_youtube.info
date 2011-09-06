@@ -1,0 +1,14 @@
+name = YouTube
+description = Broadcase Youself
+dependencies[] = activitystream 
+dependencies[] = activitystream_feed
+package = Activity Stream
+core = 6.x
+version = "6.x-1"
+project = "activitystream"
+; Information added by drupal.org packaging script on 2010-07-11
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "activitystream_youtube"
+datestamp = "1278833317"
+

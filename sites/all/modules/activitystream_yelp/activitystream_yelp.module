@@ -1,0 +1,89 @@
+<?php
+// $Id: activitystream_yelp.module,v 1.1.2.1 2009/09/10 17:04:19 grayside Exp $
+/**
+ * @file
+ * The module for importing Yelp Reviews feed
+ */
+ 
+/*
+ * The API passes in a $user object that contains four properties:
+ * uid, userid, password, feed. These properties contain the account
+ * information entered into the user's settings page, along with the 
+ * uid of their Drupal account.
+ */
+function activitystream_yelp_streamapi($user) {
+  // This user doesn't have a Yelp ID entered. Move along.
+  if (!$user->userid) {
+    return;
+  }
+  
+  // Use the activitystream_feed module to pull in the user's reviews
+  $user->feed = 'http://www.yelp.com/syndicate/user/' . $user->userid . '/rss.xml';
+  $items = activitystream_feed_streamapi($user);
+
+  foreach ($items as $review) {
+    $userid = $user->userid .':';
+    $review['title'] = preg_replace('/\son\sYelp/', '', $review['title']);
+    $newitems[] = $review;
+  }
+  return $newitems;
+}
+
+
+/*
+ * Implement a user settings form hook. Modules should build a form
+ * using an array that mirrors the Drupal form API. activitystream.module
+ * will add the form elements to a tab called Activity Streams on the
+ * user's Profile Edit page. Fields should be named
+ * yourmodulename_fieldname. For instance, to store the user ID for 
+ * Flickr, the field name is activitystream_flickr_userid
+ *
+ * To avoid collisions with other activitystream module's forms
+ * use your module's name as the form array's key.
+ *
+ * @param $edit
+ *   The values of the form fields, used for setting defaults
+ * 
+ */
+function activitystream_yelp_activitystream_settings(&$edit) {
+  $form['activitystream_yelp'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Yelp settings'));
+  $form['activitystream_yelp']['activitystream_yelp_userid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Username'),
+    '#default_value' => empty($edit['activitystream_yelp_userid']) ? '' : $edit['activitystream_yelp_userid'],
+    '#description' => t('The userid for your Yelp account. Copy it from the URL of your Yelp Profile page.'));
+  return $form;
+}
+
+function theme_activitystream_yelp_icon() {
+  return l(
+    theme('image', drupal_get_path('module', 'activitystream_yelp') . '/yelp.png', 'Y'),
+    'http://www.yelp.com',
+    array('attributes' => array('title' => 'Yelp.com'), 'html' => TRUE)
+  );
+}
+
+function theme_activitystream_yelp_item($action) {
+  $node = node_load($action->nid);
+  $date = theme('activitystream_date', $node->created);
+  $user = activitystream_user_load($node->uid);
+  $name = theme('activitystream_username', $user);
+  return '<span class="activitystream-item">' . theme('activitystream_yelp_icon')
+    . " <span>$name reviewed " . l($node->title, $action->link, array('attributes' => array('title' => $node->title . ' on Yelp')))
+    . " <span class=\"activitystream-created\">$date</span></span>"
+    . l('#', 'node/' . $node->nid,
+        array('attributes' => array('class' => 'permalink', 'title' => 'teaser'))) . '</span>';
+}
+
+function activitystream_yelp_theme() {
+  return array(
+    'activitystream_yelp_icon' => array(
+      'arguments' => array(),
+    ),
+    'activitystream_yelp_item' => array(
+      'arguments' => array('action' => NULL),
+    ),
+  );
+}

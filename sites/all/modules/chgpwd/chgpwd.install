@@ -1,0 +1,17 @@
+<?php
+// $Id: chgpwd.install,v 1.1.2.2 2010/03/27 15:47:24 4vinoth Exp $
+
+
+function chgpwd_install() {
+  // up the weight, so that Any module that alters the form after our alterations will have their alterations shown.
+  db_query("UPDATE {system} set weight = 100 where name='chgpwd'");
+  
+}
+
+function chgpwd_update() {
+  // up the weight, so that Any module that alters the form after our alterations will have their alterations shown.
+  db_query("UPDATE {system} set weight = 100 where name='chgpwd'");
+  
+}
+
+

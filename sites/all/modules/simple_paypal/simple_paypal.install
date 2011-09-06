@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * Check that the cURL extension exists for PHP.
+ */
+function simple_paypal_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+  
+  $has_curl = function_exists('curl_init');
+  
+  switch ($phase) {
+    case 'runtime':
+      $requirements['simple_paypal'] = array(
+        'title'    => $t('cURL'),
+        'value'    => $has_curl ? $t('Enabled') : $t('Not found'),
+        'severity' => $has_curl ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+      );
+      break;
+    case 'install':
+      if ($has_curl) {
+        $requirements['simple_paypal'] = array(
+          'title'    => $t('cURL'),
+          'severity' => REQUIREMENT_OK,
+        );
+      }
+      else {
+        $requirements['simple_paypal'] = array(
+          'title'       => $t('cURL'),
+          'severity'    => REQUIREMENT_ERROR,
+          'description' => $t('Simple Paypal could not be installed because the PHP <a href="!curl_url">cURL</a> library is not available.', array('!curl_url' => 'http://php.net/manual/en/curl.setup.php')),
+        );
+      }
+      break;
+  }
+  
+  return $requirements;
+}

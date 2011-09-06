@@ -1,0 +1,104 @@
+<?php
+// $Id: openlogin.module,v 1.2 2010/08/06 12:40:41 seaji Exp $
+/**
+ * @file
+ * Implement widget for OpenID for Drupal
+ */
+include_once('openlogin.settings.inc');
+
+/**
+ * Implementation of hook_menu_alter()
+ */
+function openlogin_menu_alter(&$items) {
+  // Move openid tab under edit tab in user page
+  $items['user/%user/edit/openid'] = $items['user/%user/openid'];
+  $items['user/%user/openid']['type'] = MENU_CALLBACK;
+  $items['user/%user/edit/openid/delete'] = $items['user/%user/openid/delete'];
+  $items['user/%user/openid/delete']['type'] = MENU_CALLBACK;
+  $items['user']['weight'] = -10;
+}
+
+/**
+ * Implementation of hook_form_alter : adds OpenID login to the login forms.
+ */
+function openlogin_form_alter(&$form, $form_state, $form_id) {
+  if($form_id == 'user_login') {
+    drupal_add_css(drupal_get_path('module', 'openlogin') .'/openlogin.css', 'module');
+    drupal_add_js(drupal_get_path('module', 'openlogin') .'/openlogin.js');
+    drupal_add_js('Drupal.login = '.drupal_to_js($GLOBALS['login']['settings']), 'inline');
+    if (!empty($form_state['post']['openid_identifier'])) {
+      $form['name']['#required'] = FALSE;
+      $form['pass']['#required'] = FALSE;
+      unset($form['#submit']);
+      $form['#validate'] = array('openid_login_validate');
+    }
+    unset($form['openid_links']);
+    unset($form['openid_identifier']);
+    $form['openlogin']['markup1'] = array(
+      '#value' => '<p id="open_providers_description">'. t('Log in using your account at:') .'</p><div id="providers">',
+    );
+    foreach($GLOBALS['login']['settings']['providers'] as $key => $provider) {
+      $form['openlogin'][$key] = array('#value' => '<div class="provider" id="'.$key.'">');
+      $form['openlogin'][$key][$key] = array(
+        '#value' => '<img src="'.$provider['icon'].'" width="16" height="16" rel="'.$key.'"> '.$provider['name'].'</div>',
+      );
+    }
+    $form['openlogin']['markup2'] = array('#value' => '<div id="input-openid">');
+    if(isset($_COOKIE['openid_claimed_id'])) {
+      $def = $_COOKIE['openid_claimed_id'];
+    }
+    else {
+      $def = 'openid.yandex.ru';
+    }
+    $form['openlogin']['openid_identifier'] = array(
+      '#type' => 'textfield',
+      '#required' => FALSE,
+      '#default_value' => $def,
+      '#size' => 60,
+    );
+    $form['openlogin']['openid_submit'] = array('#type' => 'submit', '#value' => t('Let me in'));
+    $form['openlogin']['markup3'] = array('#value' => '<p id="yandex-faq">'. $GLOBALS['login']['help_text'] .'</p>');
+    $form['openlogin']['markup4'] = array('#value' => '</div></div>');
+    $form['openlogin']['markup5'] = array('#value' => '<p id="own_pass_description">'. t('Or use your username and password:') .'</p><div id="login-user-login">');
+    $form['submit']['#suffix'] = '</div>';
+    $form['openid.return_to'] = array('#type' => 'hidden', '#value' => url('openid/authenticate', array('absolute' => TRUE, 'query' => drupal_get_destination())));
+    $form['openlogin']['#weight'] = -1;
+  }
+  elseif ($form_id == 'user_register' && isset($_SESSION['openid'])) {
+    // We were unable to auto-register a new user. Prefill the registration
+    // form with the values we have.
+    $form['name']['#default_value'] = $_SESSION['openid']['values']['name'];
+    $form['mail']['#default_value'] = $_SESSION['openid']['values']['mail'];
+    // If user_email_verification is off, hide the password field and just fill
+    // with random password to avoid confusion.
+    if (!variable_get('user_email_verification', TRUE)) {
+      $form['pass']['#type'] = 'hidden';
+      $form['pass']['#value'] = user_password();
+    }
+    $form['auth_openid'] = array('#type' => 'hidden', '#value' => $_SESSION['openid']['values']['auth_openid']);
+  }
+  $form['markup_br'] = array('#type' => 'markup', '#value' => '<br clear="both">', '#weight' => 1000);
+  return $form;
+}
+
+/**
+ * Implementation of hook_openid_user_add_alter()
+ */
+function openlogin_form_openid_user_add_alter(&$form, &$form_state) {
+  drupal_add_css(drupal_get_path('module', 'openlogin') .'/openlogin.css', 'module');
+  drupal_add_js(drupal_get_path('module', 'openlogin') .'/openlogin.js');
+  drupal_add_js('Drupal.login = '.drupal_to_js($GLOBALS['login']['settings']), 'inline');
+
+  $form['openlogin']['markup1'] = array(
+    '#value' => '<div id="user-providers">'
+  );
+  foreach($GLOBALS['login']['settings']['providers'] as $key => $provider) {
+    $form['openlogin'][$key] = array('#value' => '<div class="provider" id="'.$key.'">');
+    $form['openlogin'][$key][$key] = array(
+      '#value' => '<img src="'.$provider['icon'].'" width="16" height="16" rel="'.$key.'"> '.$provider['name'].'</div>',
+    );
+  }
+  $form['openlogin']['markup2'] = array('#value' => '</div>');
+  $form['openid_identifier']['#weight'] = 10;
+  $form['submit']['#weight'] = 11;
+}

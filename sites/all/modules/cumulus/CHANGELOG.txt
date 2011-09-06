@@ -1,0 +1,22 @@
+CHANGELOG for Cumulus for Drupal 6
+
+6.x-1.3 - 2009-04-14
+--------------------
+- Fixed #406536: Ogredude: Second color choice and hilight color choice now available, no more tags turning orange either!
+- Fixed #426460: rsvelko, lut4rp: Tagadelic was being called incorrectly.
+- Restructured code for better karma.
+
+6.x-1.2 - 2009-02-07
+--------------------
+- Added support for multiple vocabularies.
+- Added checks for missing JS file, or unconfigured block.
+- Added implementation of hook_help(), hook_menu(), hook_perm() and hook_enable().
+- Fixed problems with JavaScript aggregation.
+- Added admin screen, allows clearing module-related data from the Drupal cache.
+- Changed default rotation speed to 100 for sanity.
+
+6.x-1.1 - 2008-11-03
+--------------------
+- Added CHANGELOG.txt.
+- Added Cumulus to the Taxonomy package.
+

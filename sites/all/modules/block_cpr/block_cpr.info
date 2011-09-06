@@ -1,0 +1,12 @@
+; $Id: block_cpr.info,v 1.2.2.2 2010/01/27 17:16:45 njt1982 Exp $
+name = Block CPR
+description = Block Content Per Role
+core = 6.x
+dependencies[] = block
+
+; Information added by drupal.org packaging script on 2010-01-27
+version = "6.x-1.1"
+core = "6.x"
+project = "block_cpr"
+datestamp = "1264612805"
+

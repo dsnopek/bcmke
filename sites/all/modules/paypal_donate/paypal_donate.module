@@ -1,0 +1,191 @@
+<?php
+// $Id: paypal_donate.module,v 1.4 2010/11/13 21:03:34 johnnymast Exp $
+
+/**
+* @copyright (c) People's Playground Development team.
+* @version 1.2
+* @author Johnny Mast <j.mast@peoplesplayground.nl>
+* @since Version 1.0
+*/
+
+/**
+* Sets the information about the content-type so Drupal can display it 
+* on the create content page.
+*
+* @since 1.0
+* @return array with content-type information.
+*/
+function paypal_donate_node_info() {
+  return array(
+    'paypal_page' => array(
+      'name' => t('Paypal donate page'),
+      'module' => 'paypal_donate',
+      'description' => t('Allow your users to leave you a donation'),
+    )
+  );
+}
+
+/**
+ * Returns a list of permissions that can be used for this module.
+ * 
+ * @since 1.2
+ * @return array An array of valid permissions for the onthisdate module
+ */
+function paypal_donate_perm() {
+  return array(
+      'create paypal_page',
+      'edit own paypal_page',
+      );
+} 
+
+/**
+* Determine if the given user has access to this given object. (System hook)
+*
+* @since 1.0
+* @param $op    string  The operation to be performed
+* @param $delta integer The node on which the operation is to be performed, or, if it does not yet exist, the type of node to be created.
+* @param $edit  array A user object representing the user for whom the operation is to be performed.
+* @return bool  user has access true or false.
+*/
+function paypal_donate_access($op, $node, $account) {
+
+  if ($op == 'create') {
+    // Only users with permission to do so may create this node type.
+    return user_access('create paypal_page', $account);
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    if (user_access('edit own paypal_page', $account) && ($account->uid == $node->uid)) {
+      return TRUE;
+    }
+  }
+}
+
+/**
+* Define all themes used in this module. These theme items
+* can be used in the module here using the theme function.
+*
+* @since 1.0
+* @see paypal_donate_nodeapi()
+* @return array with theme information
+*/
+function paypal_donate_theme() {
+  $items = array();
+  
+  $items['paypal_form'] = array(
+      'template' => 'paypal_form',
+      'arguments' => array('node' => NULL)
+  );
+
+  return $items;
+} 
+
+/**
+* This function is called with every node event. In this case we use this function to render 
+* the Paypal form on the user side of the website (So on watching the content). It will precent
+* the Paypal button for users to donate money to the website.
+* 
+* @since 1.0
+* @see http://api.drupal.org/api/function/hook_nodeapi/6
+*/
+function paypal_donate_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	if (user_access('access content')) {
+		if ($op == 'alter') {
+			if ($node->type == 'paypal_page') {
+				$node->body = theme('paypal_form', $node);
+				return NULL;
+			}
+		}
+	}
+}
+
+/**
+* This function returns the form that will displayed on the content creation page.
+*
+* @since 1.0
+* @see paypal_donate_nodeapi()
+* @param $node object to pass the values to the form.
+* @return array form with node settings.
+*/
+function paypal_donate_form(&$node) {
+  $type = node_get_types('type', $node);
+
+  $form['title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Donation title'),
+    '#required' => TRUE,
+    '#default_value' => $node->title,
+    '#weight' => -5
+  );
+ 
+  $form['body_filter']['body'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Donation body'),
+    '#default_value' => $node->body,
+    '#required' => FALSE,
+ 	'#weight' => 1
+  );
+  $form['body_filter']['filter'] = filter_form($node->format);
+
+  $form['account'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Paypal account email'),
+    '#required' => FALSE,
+    '#default_value' => $node->paypal_account,
+    '#weight' => 2
+  );
+  return $form;
+}
+
+/**
+* This is a hook used by node / Content-type modules. It is called to allow the module a chance to load extra 
+* information that it stores about a node, or possibly replace already loaded information.
+*
+* @since 1.0
+* @param $node object the node to load from the database.
+* @return void
+*/
+function paypal_donate_load($node) {
+	return db_fetch_object( db_query("SELECT * FROM {paypal_donate} WHERE nid='%s'", $node->nid));
+}
+
+/**
+* This hook is triggered when a node of type 'paypal_donate' has been saved.
+* This function will insert a new record into the database.
+*
+* @since 1.0
+* @param $node object the node to load from the database.
+* @return void
+*/
+function paypal_donate_insert($node) {
+  return db_query("INSERT INTO {paypal_donate} SET nid='%s', paypal_account='%s'", $node->nid, $node->account);
+}
+
+/**
+* This hook is triggered when a node of type 'paypal_donate' has been updated.
+* This function will update an existing record in the database.
+*
+* @since 1.0
+* @param $node object the node to load from the database.
+* @return void
+*/
+function paypal_donate_update($node) {
+	if ($node->nid > 0) {
+		return db_query("UPDATE {paypal_donate} SET paypal_account='%s' WHERE nid='%s'", $node->account, $node->nid);
+	} else /* This else should never be executed */
+  	paypal_donate_save($node);
+}
+
+/**
+* This hook is triggered when a node of type 'paypal_donate' well be deleted.
+* This function will delete an existing record from the database.
+*
+* @since 1.0
+* @param $node object the node to load from the database.
+* @return void
+*/
+function paypal_donate_delete($node) {
+	if ($node->nid > 0) {
+		return db_query("DELETE FROM {paypal_donate} WHERE nid='%s'", $node->nid);
+	}
+}

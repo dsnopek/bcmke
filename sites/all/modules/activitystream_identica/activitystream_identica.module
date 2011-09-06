@@ -1,0 +1,57 @@
+<?php
+// $Id: activitystream_identica.module,v 1.1 2009/09/19 00:21:26 toddejohnson Exp $
+
+/**
+ * @file
+ * The module file for identi.ca feed
+ */
+/**
+ * Hook that calls feed module to process the feed 
+ * @param string $user Contains uid, userid, password, feed entered on user's settings page
+ */
+function activitystream_identica_streamapi($user) {
+  // User doesn't have a identi.ca username entered
+  if (!$user->userid) {
+    return;
+  }
+  
+  // Use activitystream_feed module to pull information
+  $user->feed = 'http://identi.ca/'. $user->userid .'/rss';
+  $items = activitystream_feed_streamapi($user);
+  return $items;
+}
+/**
+ * Hook for user settings form.
+ * Will be added by activitystream module
+ * @param array $edit Values of the form fields
+ */
+function activitystream_identica_activitystream_settings(&$edit) {
+  $form['activitystream_identica'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Identi.ca settings')
+  );
+  $form['activitystream_identica']['activitystream_identica_userid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Username'),
+    '#default_value' => empty($edit['activitystream_identica_userid']) ? '' : $edit['activitystream_identica_userid'],
+    '#description' => t('Your Identi.ca username')
+  );
+  return $form;
+}
+function theme_activitystream_identica_icon() {
+  return theme('image', drupal_get_path('module', 'activitystream_identica') .'/identica.png', 'Identi.ca');
+}
+function theme_activitystream_identica_item($activity) {
+  $node = node_load($activity->nid);
+  $date = theme('activitystream_date', $node->created);
+  $user = activitystream_user_load($node->uid);
+  $name = theme('activitystream_username', $user);
+  return '<span class="activitystream-item">'. theme('activitystream_identica_icon') .' <span>'. $name ." ". l($node->title, $activity->link) .'<span class="activitystream-created">'. $date .'</span></span>'. l('#', 'node/'. $node->nid, array('class' => 'permalink')) .'</span>';
+}
+function activitystream_identica_theme() {
+  return array(
+    'activitystream_identica_icon' => array('arguments' => array()),
+    'activitystream_identica_item' => array('arguments' => array('activity' => NULL))
+    );
+}
+

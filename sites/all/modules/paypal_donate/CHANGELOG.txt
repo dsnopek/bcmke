@@ -1,0 +1,15 @@
+==== Paypal Donate Changelog.txt ($Id: CHANGELOG.txt,v 1.3 2010/11/13 21:01:50 johnnymast Exp $) ==
+
+Version 1.1
+-----------
+  * Added support for the drupal 
+
+Version 1.0
+-----------
+  * Stepped away from variable_get and introduced database management of paypal data.
+  * Cleaned up the code.
+  * Added comments to all the functions 
+  * Removed the hook_perm routine
+  * Added the hook_delete hook for deleting data from the database.
+  * Added README.txt
+  * Added CHANGELOG.txt

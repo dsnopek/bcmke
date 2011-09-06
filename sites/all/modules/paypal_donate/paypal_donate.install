@@ -1,0 +1,64 @@
+<?php
+// $Id: paypal_donate.install,v 1.2 2010/07/15 18:28:30 johnnymast Exp $
+
+define('PAYPAL_DONATE_VERSION', 1.0);
+
+/**
+* This hook is triggered when the paypal donate module is being installed. 
+* This function will run only once and gives us the possibility to install 
+* the a required table in the database.
+*
+* @since 1.0
+* @return void
+*/
+function paypal_donate_install() {
+  drupal_install_schema('paypal_donate');
+  variable_set('paypal_donate_version', PAYPAL_DONATE_VERSION);
+}
+
+
+/**
+* By implementing hook_schema() and specifying the tables your module declares, you can easily create and drop these tables on 
+* all supported database engines. You don't have to deal with the different SQL dialects for table creation and alteration of the 
+* supported database engines.
+*
+* @since 1.0
+* @return void
+*/
+function paypal_donate_schema() {
+  $schema = array();
+  $schema['paypal_donate'] = array(
+    'fields' => array(
+       'nid' => array(
+			'type' => 'int', 
+			'unsigned' => TRUE, 
+			'not null' => TRUE, 
+			'default' => 0, 
+		),
+       'paypal_account' => array(
+			'type' => 'varchar', 
+			'length' => '255')
+    )
+  );
+  return $schema;
+}
+
+
+/**
+* This hook is triggered when the paypal donate module is being uninstalled. 
+* This function will run only once and gives us the possibility to remove 
+* the a required table in the database.
+*
+* @since 1.0
+* @return void
+*/
+function paypal_donate_uninstall() {
+  drupal_uninstall_schema('paypal_donate');
+	
+  /**
+  * As in version 1.1 i leave the 'paypal_donate_version' in the database because
+  * it might happen that a user would like to decide to update a newer version of the 
+  * module on a later date. At least then we know that we had an older version installed
+  * previously.
+  */
+}

@@ -1,0 +1,319 @@
+<?php
+//  $Id: cumulus.module,v 1.1.2.10 2009/04/14 09:04:58 lut4rp Exp $
+/**
+ * @file
+ * The brain of Cumulus.
+ *
+ * Provides a Flash-based 3D tag cloud.
+ * Based on WP-Cumulus for WordPress, by Roy Tanck.
+ */
+
+/**
+ * Implementation of hook_enable().
+ */
+function cumulus_enable() {
+  drupal_set_message(t('Cumulus has now been enabled. You need to !configure the Cumulus block settings before you use it.', array('!configure' => l(t('configure and save'), 'admin/build/block'))));
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function cumulus_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks[0]['info'] = t('Cumulus Tag Cloud');
+      $blocks[0]['cache'] = BLOCK_NO_CACHE;
+      return $blocks;
+
+    case 'configure':
+      return cumulus_block_configure();
+
+    case 'save':
+      variable_set('cumulus_vid', $edit['vid']);
+      variable_set('cumulus_tagadelic_step', $edit['tagadelic_step']);
+      variable_set('cumulus_tagadelic_limit', $edit['tagadelic_limit']);
+      variable_set('cumulus_flash_width', $edit['flash_width']);
+      variable_set('cumulus_flash_height', $edit['flash_height']);
+      variable_set('cumulus_flash_background', $edit['flash_background']);
+      variable_set('cumulus_flash_transparency', $edit['flash_transparency']);
+      variable_set('cumulus_flash_color', $edit['flash_color']);
+      variable_set('cumulus_flash_color2', $edit['flash_color2']);
+      variable_set('cumulus_flash_hicolor', $edit['flash_hicolor']);
+      variable_set('cumulus_flash_speed', $edit['flash_speed']);
+      variable_set('cumulus_flash_distribute', $edit['flash_distribute']);
+      variable_set('cumulus_flash_font_size', $edit['flash_font_size']);
+      variable_set('cumulus_flash_font_size_interval', $edit['flash_font_size_interval']);
+      return;
+
+    case 'view':
+      $vocs = variable_get('cumulus_vid', 1);
+      if (is_numeric($vocs)) {
+        $vocs = array($vocs);
+      }
+      elseif (preg_match('/^([0-9]+,){1,5}[0-9]+$/', $vocs)) {
+        $vocs = explode(',', $vocs);
+      }
+      else {
+        $vocs = array(1);
+      }
+      $tags = tagadelic_get_weighted_tags($vocs, variable_get('cumulus_tagadelic_step', 6), variable_get('cumulus_tagadelic_limit', 24));
+      $tags = tagadelic_sort_tags($tags);
+      $tags_formatted_flash = theme('cumulus_weighted', $tags);
+      $tags_formatted_alt = theme('tagadelic_weighted', $tags);
+
+      $js = drupal_get_path('module', 'cumulus') .'/cumulus.js';
+      if (file_exists($js)) {
+        drupal_add_js($js, 'module', 'header', FALSE, TRUE, FALSE);
+      }
+      else {
+        drupal_set_message(t('The file @folder is missing. Please download it from !link, and add it to the Cumulus module folder!', array('@folder' => $js, '!link' => l('http://pratul.in/files/cumulus.js', 'http://pratul.in/files/cumulus.js'))), 'error');
+      }
+      if (!(variable_get('cumulus_vid', 1))) {
+        drupal_set_message(t('You haven\'t yet configured and saved the Cumulus settings on !link. Cumulus might not work properly!', array('!link' => l('your blocks configuration page', 'admin/build/block/configure/cumulus/0'))), 'warning');
+      }
+      // Flash params
+      $param = array(
+        'path_to_flash' => base_path() . drupal_get_path('module', 'cumulus') .'/cumulus.swf',
+        'width' => variable_get('cumulus_flash_width', 1),
+        'height' => variable_get('cumulus_flash_height', 1),
+        'background' => variable_get('cumulus_flash_background', 'ffffff'),
+        'color' => '0x'. variable_get('cumulus_flash_color', '000000'),
+        'color2' => '0x'. variable_get('cumulus_flash_color2', 'ff0000'),
+        'hicolor' => '0x'. variable_get('cumulus_flash_hicolor', '666666'),
+        'speed' => variable_get('cumulus_flash_speed', 220),
+        'distribute' => variable_get('cumulus_flash_distribute', 'true'),
+      );
+      if (variable_get('cumulus_flash_transparency', 'false') == 'true' ) {
+        $param['transparency'] = 'widget_so.addParam("wmode", "transparent");';
+      }
+      // link to view with additional tags
+      $links['more'] = l(t('more tags'), 'tagadelic/chunk/'. variable_get('cumulus_vid', 1));
+      // output content
+      $blocks['subject'] = t('Cumulus Tag Cloud');
+      // param with value 9 indicates required version of flash player - see http://blog.deconcept.com/swfobject/
+      $blocks['content'] = <<<EOT
+        <div id="tags">
+        {$tags_formatted_alt}
+        <script type="text/javascript">
+          var rnumber = Math.floor(Math.random()*9999999);
+          var widget_so = new SWFObject("{$param['path_to_flash']}?r="+rnumber, "cumulusflash", "{$param['width']}", "{$param['height']}", "9", "{$param['background']}");
+          {$param['transparency']}
+          widget_so.addParam("allowScriptAccess", "always");
+          widget_so.addVariable("tcolor", "{$param['color']}");
+          widget_so.addVariable("tcolor2", "{$param['color2']}");
+          widget_so.addVariable("hicolor", "{$param['hicolor']}");
+          widget_so.addVariable("tspeed", "{$param['speed']}");
+          widget_so.addVariable("distr", "{$param['distribute']}");
+          widget_so.addVariable("mode", "tags");
+          widget_so.addVariable("tagcloud", "{$tags_formatted_flash}");
+          widget_so.write("tags");
+        </script>
+        </div>
+        <div class="more-link">{$links['more']}</div>
+EOT;
+      return $blocks;
+  }
+}
+
+/**
+ * Implementation for hook_theme().
+ */
+function cumulus_theme() {
+  return array(
+    'cumulus_weighted' => array(
+      'arguments' => array('terms' => NULL),
+    ),
+  );
+}
+
+/**
+ * Themeing function.
+ */
+function theme_cumulus_weighted($terms) {
+  $output = '<tags>';
+  foreach ($terms as $term) {
+    // assign font size
+    $font_size = (intval($term->weight) * variable_get('cumulus_flash_font_size_interval', 2)) + (variable_get('cumulus_flash_font_size', 10) - variable_get('cumulus_flash_font_size_interval', 2));
+    $output .= l($term->name, taxonomy_term_path($term), array('attributes' => array('style' => '"font-size: '. $font_size .'px;"'))) ." \n";
+  }
+  $output .= '</tags>';
+  $output = urlencode($output);
+
+  return $output;
+}
+
+/**
+ * Implementation of hook_help().
+ */
+function cumulus_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#cumulus':
+      $output = '<p>'. t('Cumulus allows you to display a taxonomy\'s terms using a Flash movie that rotates them in 3D. This way, you can set it up like a 3D tag cloud. It works just like a regular tag cloud, but is more visually exciting!') .'</p>';
+      $output .= '<p>'.'<strong>'. t('Configuring Cumulus: ') .'</strong>'.'<br />';
+      $output .= t('By default, Cumulus is rendered as a block. You need to enable and configure that block to see it. If you don\'t configure and save the Cumulus block settings once, it will not work! Do that before wondering what\'s wrong :-)') .'</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function cumulus_menu() {
+  $items = array();
+  $items['admin/settings/cumulus'] = array(
+    'title' => 'Cumulus',
+    'description' => 'Cumulus settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cumulus_admin_settings'),
+    'access arguments' => array('administer cumulus'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_settings().
+ */
+function cumulus_admin_settings() {
+  $form['settings'] = array(
+    '#type'  => 'fieldset',
+    '#title' => t('Clear the Cumulus cache'),
+    '#description' => t('If you see older terms, or are unable to see terms from newly added vocabularies, try clearing the cache.<br />This will only clear the Cumulus related data from the cache. It will not clear the full Drupal cache.'),
+  );
+  $form['settings']['clear_cache'] = array(
+    '#type' => 'submit',
+    '#value' => t('Click to clear'),
+    '#submit' => array('cumulus_clear_cache'),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Clear the cache of all Cumulus (in effect, Tagadelic) data.
+ */
+function cumulus_clear_cache() {
+  $cid = "tagadelic";
+  $table = "cache";
+  $wildcard = TRUE;
+  cache_clear_all($cid, $table, $wildcard);
+  drupal_set_message(t('The module\'s cache has been cleared'), 'status');
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function cumulus_perm() {
+  return array('administer cumulus');
+}
+
+/**
+ * Implementation of hook_configure().
+ */
+function cumulus_block_configure() {
+  $form['vid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Vocabulary IDs to be included'),
+    '#default_value' => variable_get('cumulus_vid', 1),
+    '#maxlength' => 10,
+    '#description' => t('The IDs of the vocabularies that will be displayed. Separate the IDs by commas only (eg: 1, 3, 4)'),
+  );
+  $form['tagadelic_step'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Tag size interval'),
+    '#default_value' => variable_get('cumulus_tagadelic_step', 6),
+    '#maxlength' => 2,
+    '#description' => t('The number of tag sizes you want to use.'),
+  );
+  $form['tagadelic_limit'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Number of tags to display'),
+    '#default_value' => variable_get('cumulus_tagadelic_limit', 24),
+    '#maxlength' => 2,
+    '#description' => t('The maximum number of tags that will be displayed.'),
+  );
+  $form['flash_width'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Width of cumulus'),
+    '#default_value' => variable_get('cumulus_flash_width', 200),
+    '#maxlength' => 3,
+    '#description' => t('The width of the cumulus in pixels.'),
+  );
+  $form['flash_height'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Height of cumulus'),
+    '#default_value' => variable_get('cumulus_flash_height', 150),
+    '#maxlength' => 3,
+    '#description' => t('The height of the cumulus in pixels.'),
+  );
+  $form['flash_background'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Background color of cumulus'),
+    '#default_value' => variable_get('cumulus_flash_background', 'ffffff'),
+    '#maxlength' => 6,
+    '#description' => t('The hex color value for the background of the cumulus. E.g. ffffff. If "Background transparency" is enabled, this option will have no effect.'),
+  );
+  $form['flash_transparency'] = array(
+    '#type' => 'select',
+    '#title' => t('Background transparency'),
+    '#default_value' => variable_get('cumulus_flash_transparency', 'false'),
+    '#options' => array(
+      'false' => t('no'),
+      'true' => t('yes'),
+    ),
+    '#description' => t('Enabling background transparency might cause issues with some (mostly older) browsers.<br />Under Linux, transparency doesn\'t work at all due to a known limitation in the current Flash player.'),
+  );
+  $form['flash_color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Font color of cumulus'),
+    '#default_value' => variable_get('cumulus_flash_color', 'ff0000'),
+    '#maxlength' => 6,
+    '#description' => t('The hex color value you would like to use for the tags. E.g. 000000.'),
+  );
+  $form['flash_color2'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Second font color of cumulus'),
+    '#default_value' => variable_get('cumulus_flash_color2', '000000'),
+    '#maxlength' => 6,
+    '#description' => t('Second tag color. If supplied, tags will get a color from a gradient between both colors based on their popularity.'),
+  );
+  $form['flash_hicolor'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Highlight color of cumulus'),
+    '#default_value' => variable_get('cumulus_flash_hicolor', '666666'),
+    '#maxlength' => 6,
+    '#description' => t('The hex color value you would like to use for the tag mouseover/hover color'),
+  );
+  $form['flash_speed'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Rotation speed'),
+    '#default_value' => variable_get('cumulus_flash_speed', 100),
+    '#maxlength' => 3,
+    '#description' => t('Set the speed of the cumulus. Options between 25 and 500 work best.'),
+  );
+  $form['flash_distribute'] = array(
+    '#type' => 'select',
+    '#title' => t('Distribute tags evenly on cumulus'),
+    '#default_value' => variable_get('cumulus_flash_distribute', 'true'),
+    '#options' => array(
+      'false' => t('no'),
+      'true' => t('yes'),
+    ),
+    '#description' => t('When enabled, the movie will attempt to distribute the tags evenly over the surface of the cumulus.'),
+  );
+  $form['flash_font_size'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Font size'),
+    '#default_value' => variable_get('cumulus_flash_font_size', 10),
+    '#maxlength' => 2,
+    '#description' => t('Set the font size of the tag with the lowest tag-size in pixels (level 1).'),
+  );
+  $form['flash_font_size_interval'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Font size interval'),
+    '#default_value' => variable_get('cumulus_flash_font_size_interval', 2),
+    '#maxlength' => 1,
+    '#description' => t('Set the font size interval used for the different tag-sizes (level 2 and higher).'),
+  );
+  return $form;
+}

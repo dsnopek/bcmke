@@ -1,0 +1,88 @@
+<?php
+// $Id: chgpwd.module,v 1.1.2.2 2010/03/28 17:23:39 4vinoth Exp $
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function chgpwd_menu() {
+
+
+  $items['user/%user_category/edit/chgpwd'] = array(
+    'title' => 'Change password',
+    'description' => 'Provides a new tab for change password.',
+    'page callback' => 'chgpwd_chgpwd_page',
+    'page arguments' => array(1),
+    'access callback' => 'user_edit_access',
+    'access arguments' => array(1),
+    'file' => 'user.pages.inc',
+    'file path' => drupal_get_path('module' , 'user') . '/',
+    'load arguments' => array('%map', '%index'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function chgpwd_form_user_profile_form_alter(&$form, $form_state) {
+
+  // category will be 'account'
+  //$categoy = $form['_category']['#value'];
+
+  if (is_null(arg(3)) || arg(3) == 'account'){
+	// to hide from default user edit
+	$form['account']['pass']['#access'] = FALSE;
+  }else if (arg(3) == 'chgpwd'){
+	$form['account']['#title'] = t('Change password');
+
+	// hide other than password
+	foreach($form as $mkey=>$mval){
+	  if ($mkey == 'account'){
+	    foreach($form['account'] as $akey=>$aval){
+		  // hide all but pass
+
+		  if ($akey != 'pass' && is_array($form['account'][$akey])){
+		    $form['account'][$akey]['#access'] = FALSE;
+		  }
+	    }
+	  }else{
+	    $ignore = array(
+	      '_category', '_account', 'submit', '#attributes',
+		  '#parameters', '#build_id', '#type', 'form_build_id',
+		  'form_token', 'form_id', '#parents', '#validate',
+		  '#submit',
+		  'pass_current', // for password_change module
+	    );
+	    // just hide it
+	    if (!array_search($mkey, $ignore)  && is_array($form[$mkey])){
+		  $form[$mkey]['#access'] = FALSE;
+	    }
+	  }
+    }
+
+
+    $form['account']['pass']['#required'] = TRUE;
+    $form['submit']['#value'] = t('Change Password');
+
+  }
+
+}
+
+function chgpwd_chgpwd_page($account, $category = 'account'){
+	drupal_set_title(t('Change password'));
+	return drupal_get_form('user_profile_form', $account, $category);
+
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function chgpwd_user($type, &$edit, &$account, $category = NULL) {
+
+  if ($type == 'categories') {
+    return array(array('name' => 'chgpwd', 'title' => t('Change password'), 'weight' => 1));
+  }
+}

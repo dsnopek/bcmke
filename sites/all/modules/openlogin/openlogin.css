@@ -1,0 +1,67 @@
+/* $Id: openlogin.css,v 1.1 2010/07/26 12:55:52 seaji Exp $ */
+#edit-openid-identifier {
+  background-image: url(icons/login-bg.png);
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  padding-left: 20px;
+}
+#user-login {
+  background: url(icons/openid-logo.gif) no-repeat 474px 0;
+}
+#providers {
+  clear: both;
+  background-color: #F2F2F2;
+  height: 174px;
+  width: 574px;
+  margin: 18px auto 5px auto;
+  border:1px solid #CACACA;
+}
+#user-providers {
+  clear: both;
+  background-color: #F2F2F2;
+  height: 124px;
+  width: 574px;
+  margin: 18px auto 5px auto;
+  border:1px solid #CACACA;
+}
+.provider {
+  float: left;
+  width: 150px;
+  height: 20px;
+  margin: 10px 20px;
+  cursor: pointer;
+}
+#input-openid {
+  clear: both;
+  margin: 5px auto;
+  padding: 5px
+}
+#openid_username {
+  margin: 5px 10px;
+}
+#input-openid #edit-openid-identifier {
+  margin: 5px 10px;
+  width:250px;
+  padding: 0 0 0 18px;
+  background: #FFFFFF url(icons/login-bg.png) no-repeat 0 50%;
+}
+.edit-openid-identifier {
+  display: inline;
+  margin: 0 10px;
+}
+#openid_submit {
+  vertical-align: middle;
+  margin: 5px 10px;
+}
+#login-user-login {
+  padding: 10px 0 10px 20px;
+  clear: both;
+  background-color: #F2F2F2;
+  width: 544px;
+  margin: 0 auto 20px auto;
+  border:1px solid #CACACA;
+}
+#yandex-faq {
+  float: right;
+  margin:-20px 5px 0 0;
+}

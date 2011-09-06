@@ -1,0 +1,15 @@
+; $Id: activitystream_yelp.info,v 1.1 2009/09/06 05:43:16 grayside Exp $
+
+name = ActivityStream Yelp
+description = Integrates user Yelp reviews into the activity stream.
+dependencies[] = activitystream 
+dependencies[] = activitystream_feed
+package = Activity Stream
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-07-11
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "activitystream_yelp"
+datestamp = "1278833316"
+

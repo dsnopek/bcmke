@@ -1,0 +1,13 @@
+; $Id: openlogin.info,v 1.2 2010/08/06 12:30:17 seaji Exp $
+name = Open Login
+description = "Helps user to select OpenID provider in login form."
+package = Custom
+core = 6.x
+dependencies[] = openid
+
+; Information added by drupal.org packaging script on 2010-08-06
+version = "6.x-1.1"
+core = "6.x"
+project = "openlogin"
+datestamp = "1281099076"
+

@@ -1,0 +1,12 @@
+; $Id: activitystream.info,v 1.2.2.2 2008/07/31 17:05:26 akalsey Exp $
+
+name = Activity Stream Core
+description = Core API module for Activity Streams
+package = Activity Stream
+core = 6.x
+; Information added by drupal.org packaging script on 2009-11-07
+version = "6.x-1.0"
+core = "6.x"
+project = "activitystream"
+datestamp = "1257576304"
+

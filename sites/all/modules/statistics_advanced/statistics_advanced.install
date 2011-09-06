@@ -1,0 +1,101 @@
+<?php
+// $Id: statistics_advanced.install,v 1.1.2.8 2008/12/30 21:31:53 davereid Exp $
+
+/**
+ * @file
+ * Install and uninstall schema and functions for the statistics_advanced module.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function statistics_advanced_install() {
+  // Set this module's weight to right below statistics so we can run hook_exit
+  // after statistics_exit has been called.
+  db_query("UPDATE {system} SET weight = 1 WHERE type = 'module' AND name = 'statistics_advanced'");
+
+  // Add an index to optimize accesslog table for searching
+  $ret = array();
+  db_add_index($ret, 'accesslog', 'accesslog_path_sid', array('path', 'sid'));
+  db_add_index($ret, 'accesslog', 'accesslog_uid_sid', array('uid', 'sid'));
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function statistics_advanced_uninstall() {
+  // Remove module variables
+  drupal_load('module', 'statistics_advanced');
+  $variables = array_keys(statistics_advanced_variables());
+  foreach ($variables as $variable) {
+    variable_del($variable);
+  }
+
+  // Remove index created on accesslog table
+  $ret = array();
+  db_drop_index($ret, 'accesslog', 'accesslog_path_sid');
+  db_drop_index($ret, 'accesslog', 'accesslog_uid_sid');
+}
+
+/**
+ * Split the index in {accesslog}.
+ */
+function statistics_advanced_update_6000() {
+  $ret = array();
+  db_drop_index($ret, 'accesslog', 'accesslog_sid_uid_path');
+  db_add_index($ret, 'accesslog', 'accesslog_path_sid', array('path', 'sid'));
+  db_add_index($ret, 'accesslog', 'accesslog_uid_sid', array('uid', 'sid'));
+  return $ret;
+}
+
+/**
+ * Rename ignore_user_roles variable to user_roles.
+ */
+function statistics_advanced_update_6001() {
+  // Rename the ignore_user_roles variable to ignore_roles.
+  if ($roles = variable_get('statistics_advanced_ignore_user_roles', FALSE)) {
+    variable_set('statistics_advanced_ignore_roles', $roles);
+    variable_del('statistics_advanced_ignore_user_roles');
+  }
+  return array();
+}
+
+/**
+ * Unfilter the counter_node_types variable.
+ */
+function statistics_advanced_update_6002() {
+  $counter_node_types = variable_get('statistics_advanced_counter_node_types', array());
+  $node_types = array_keys(node_get_types('names'));
+  $result = array();
+  foreach ($node_types as $node_type) {
+    if (in_array($node_type, $counter_node_types)) {
+      $result[$node_type] = $node_type;
+    }
+    else {
+      $result[$node_type] = 0;
+    }
+  }
+  variable_set('statistics_advanced_counter_node_types', $result);
+
+  return array();
+}
+
+/**
+ * Convert ignore_roles variable into a permission.
+ */
+function statistics_advanced_update_6003() {
+  $ret = array();
+
+  $perm = 'exclude visits from the access log';
+  $ignore_roles = variable_get('statistics_advanced_ignore_roles', array());
+  $ignore_roles = array_filter($ignore_roles, 'is_numeric');
+  if (!empty($ignore_roles)) {
+    $query = db_query("SELECT rid, perm FROM {permission} WHERE rid IN (". db_placeholders($ignore_roles) . ") AND perm NOT LIKE '%%%s%%'", array_merge($ignore_roles, array($perm)));
+    while ($role = db_fetch_object($query)) {
+      $ret[] = update_sql("UPDATE {permission} SET perm = '{$role->perm}, {$perm}' WHERE rid = {$role->rid}");
+    }
+  }
+  variable_del('statistics_advanced_ignore_roles');
+
+  return $ret;
+}

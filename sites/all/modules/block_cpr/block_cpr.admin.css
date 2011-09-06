@@ -1,0 +1,23 @@
+/* $Id: block_cpr.admin.css,v 1.1.2.2 2010/01/27 17:16:45 njt1982 Exp $ */
+#block_cpr fieldset { margin:0; }
+#block_cpr td.status {
+  background-color:#D4E7F3;
+  border-bottom:1px solid #B4D7F0;
+  border-top:1.5em solid #FFFFFF;
+  color:#455067;
+  font-weight:bold;
+}
+
+#block_cpr tr.status-message {
+  font-weight:normal;
+  color:#999;
+}
+#block_cpr tr.status-populated {
+  display:none;
+}
+#block_cpr td.rolecell {
+  width:25%;
+}
+#block_cpr td.contentcell {
+  width:75%;
+}

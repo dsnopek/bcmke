@@ -1,0 +1,120 @@
+<?php
+// $Id: twitter_search_feeds.module,v 1.1.2.2 2009/07/25 09:43:55 prajwala Exp $
+/**
+ * @file
+ * The module display the twitter search results based on search terms provided.
+ */
+
+function twitter_search_feeds_activitystream_admin() {
+  $form['twitter_search_feeds'] = array(
+    '#type' => 'fieldset',
+    '#title' => t("Twitter search feeds"),
+    '#description' => t("Twitter search term settings"),
+    '#weight' => 0,
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE
+  );
+  $form['twitter_search_feeds']['twitter_search_feeds_search_term'] = array(
+    '#type' => 'textfield',
+    '#title' => t("Search Term"),
+    '#description' => t("The Search Term of your twitter search. example #drupal, @prajwala, #washington. Check http://search.twitter.com/operators for more information twitter search operators"),
+    '#default_value' => variable_get('twitter_search_feeds_search_term', ''),
+    '#required' => FALSE
+  );
+  $runcron_link = l('run cron manually', 'admin/reports/status/run-cron', Array('query' => Array('destination' => 'admin/settings/activitystream')));
+  $form['twitter_search_feeds']['twitter_search_feeds_search_term']['#suffix'] = t('You need to run the cron manually to get the tweets based on this search term. ') . $runcron_link;
+  return $form;
+}
+
+function twitter_search_feeds_cron() {
+  module_load_include('inc', 'node', 'node.pages');
+  $search_term = variable_get('twitter_search_feeds_search_term', '');
+  if (empty($search_term)) {
+    return;
+  }
+  global $user;
+  $feed_url = 'http://search.twitter.com/search.atom?q='. urlencode($search_term);
+  $items = twittersearch_feeds($feed_url);
+  foreach ($items as $activity) {
+    $return[] = _activitystream_save($activity, $user, 'twitter_search_feeds');
+  }
+}
+
+function theme_twitter_search_feeds_icon() {
+  return theme_image(drupal_get_path('module', 'activitystream_twitter') .'/twitter.png', 'Twitter Search Feeds');
+}
+
+function theme_twitter_search_feeds_item($activity) {
+  $node = node_load($activity->nid);
+  $date = theme('activitystream_date', $node->created);
+  $user = activitystream_user_load($node->uid);
+  $title = twitter_search_feeds_makelinks($node->title);
+  $name = theme('activitystream_username', $user);
+   return '<span class="activitystream-item">'. theme('twitter_search_feeds_icon') ." <span> ". $title ."\" <span class=\"activitystream-created\">$date</span></span>". l('#', 'node/'. $node->nid, array('class' => 'permalink')) .'</span>';
+}
+
+function twitter_search_feeds_makelinks($text) {
+  // autolink URLS
+  $text = eregi_replace('(((f|ht){1}tp://)[-a-zA-Z0-9@:%_\+.~#?&//=]+)', '<a href="\\1">\\1</a>', $text);
+  $text = eregi_replace('([[:space:]()[{}])(www.[-a-zA-Z0-9@:%_\+.~#?&//=]+)', '\\1<a href="http://\\2">\\2</a>', $text);
+  // @ tags for users
+  $text = preg_replace('/@(\w*)/', '<a href="http://twitter.com/\\1">@\\1</a>', $text);
+  // hashtags to hashtag.org
+  $text = preg_replace('/#(\w*)/', '<a href="http://hashtags.org/tag/\\1/">#\\1</a>', $text);
+  return $text;
+}
+
+function twitter_search_feeds_theme() {
+  return array(
+    'twitter_search_feeds_icon' => array(
+      'arguments' => array(),
+    ),
+    'twitter_search_feeds_item' => array(
+      'arguments' => array('activity' => NULL),
+    ),
+  );
+}
+
+function twitter_search_feeds_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'twitter_search_feeds'),
+  );
+}
+
+/*
+ * return the feed items by reading data from the feed url.
+ */
+function twittersearch_feeds($feed_url) {
+  // No feed URL, skip this one
+  if (!$feed_url) {
+    return;
+  }
+
+  $feed = new SimplePie();
+  $feed->set_cache_location(file_directory_temp());
+  $feed->set_feed_url($feed_url);
+  $feed->set_useragent('Drupal Activity Stream: Twitter search feeds');  
+  if (!$feed->init()) {
+    watchdog('activitystream', $feed->error, NULL, WATCHDOG_ERROR);
+    return array();
+  }
+
+  $arrfeed = $feed->get_items();
+  $items = array();
+  if (is_array($arrfeed)) {
+    foreach ($arrfeed as $item) {
+      $activity['link'] = $item->get_permalink();
+      $activity['title'] = $item->get_title();
+      $author = $item->get_author();
+      $activity['body'] = l($author->name, $author->link). ":" .$item->get_description();
+      $activity['timestamp'] = strtotime(str_replace(',', '', $item->get_date()));
+      $activity['guid'] = md5($item->get_permalink());
+      $activity['data'] = serialize(array('favicon' => $feed->get_favicon(), 'feedtitle' => $feed->get_title()));
+
+      $items[] = $activity;
+    }
+  }
+  
+  return $items;
+}

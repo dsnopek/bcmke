@@ -1,0 +1,94 @@
+# $Id: statistics_advanced.pot,v 1.1.2.2 2009/05/26 04:22:08 davereid Exp $
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  statistics_advanced.admin.inc,v 1.1.2.2 2009/01/14 02:07:33 davereid
+#  statistics_advanced.module,v 1.1.2.25 2009/05/26 03:57:48 davereid
+#  statistics_advanced.info,v 1.1.2.4 2009/01/03 07:03:05 davereid
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2009-05-25 23:08-0500\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: statistics_advanced.admin.inc:30
+msgid "Do not log visits from search engines and crawlers"
+msgstr ""
+
+#: statistics_advanced.admin.inc:31
+msgid "This feature requires the <a href=\"@link\">browscap module</a>. If enabled, crawlers will not increase the node counters or be logged in the access log."
+msgstr ""
+
+#: statistics_advanced.admin.inc:38
+msgid "Only allow unique content views to increment a content's view counter."
+msgstr ""
+
+#: statistics_advanced.admin.inc:40
+msgid "Requires \"count content views\" enabled. Checking for repeat anonymous visits requires the \"enable access log\" above."
+msgstr ""
+
+#: statistics_advanced.admin.inc:45
+msgid "Show view counter for the following content types"
+msgstr ""
+
+#: statistics_advanced.admin.inc:53
+msgid "Resets"
+msgstr ""
+
+#: statistics_advanced.admin.inc:57
+msgid "Clear access log"
+msgstr ""
+
+#: statistics_advanced.admin.inc:62
+msgid "Reset all node counters"
+msgstr ""
+
+#: statistics_advanced.admin.inc:99
+msgid "Node counters reset."
+msgstr ""
+
+#: statistics_advanced.admin.inc:107
+msgid "Access log cleared."
+msgstr ""
+
+#: statistics_advanced.module:286
+msgid "Default variable for %variable not found."
+msgstr ""
+
+#: statistics_advanced.module:14
+msgid "exclude visits from the access log"
+msgstr ""
+
+#: statistics_advanced.module:15
+msgid "exclude visits from counters"
+msgstr ""
+
+#: statistics_advanced.module:24
+msgid "Settings"
+msgstr ""
+
+#: statistics_advanced.module:29
+msgid "Advanced settings"
+msgstr ""
+
+#: statistics_advanced.module:30
+msgid "Configure advanced statistics settings."
+msgstr ""
+
+#: statistics_advanced.info:0
+msgid "Statistics advanced settings"
+msgstr ""
+
+#: statistics_advanced.info:0
+msgid "Adds advanced settings and extra functionality to the Statistics module."
+msgstr ""
+

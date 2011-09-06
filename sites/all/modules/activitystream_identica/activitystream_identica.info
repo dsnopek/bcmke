@@ -1,0 +1,14 @@
+; $Id: activitystream_identica.info,v 1.1 2009/09/19 00:21:26 toddejohnson Exp $
+
+name = Identi.ca
+description = Identi.ca profile timeline
+dependencies[] = activitystream
+dependencies[] = activitystream_feed
+package = Activity Stream
+core = 6.x
+; Information added by drupal.org packaging script on 2010-01-07
+version = "6.x-1.1"
+core = "6.x"
+project = "activitystream_identica"
+datestamp = "1262823303"
+

@@ -1,0 +1,15 @@
+; $Id: activitystream_github.info,v 1.1 2010/01/18 05:01:37 cweagans Exp $
+name = Github
+description = Social Coding
+dependencies[] = activitystream 
+dependencies[] = activitystream_feed
+package = Activity Stream
+core = 6.x
+
+
+; Information added by drupal.org packaging script on 2010-01-18
+version = "6.x-1.0"
+core = "6.x"
+project = "activitystream_github"
+datestamp = "1263792005"
+

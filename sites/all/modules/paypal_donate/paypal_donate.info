@@ -1,0 +1,13 @@
+; $Id: paypal_donate.info,v 1.5 2010/11/13 21:01:50 johnnymast Exp $ 
+name = Paypal Donation Page
+description = Allow your users to donate to you or your website
+version  = 1.1
+core = 6.x
+
+
+; Information added by drupal.org packaging script on 2010-11-13
+version = "6.x-1.2"
+core = "6.x"
+project = "paypal_donate"
+datestamp = "1289682673"
+

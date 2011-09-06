@@ -1,0 +1,14 @@
+; $Id: twitter_search_feeds.info,v 1.1 2009/06/20 06:01:19 prajwala Exp $
+
+name = Twitter Search Feeds
+description = Tweets about the search term
+dependencies[] = activitystream 
+dependencies[] = activitystream_feed
+package = Activity Stream
+core = 6.x
+; Information added by drupal.org packaging script on 2009-07-25
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "twitter_search_feeds"
+datestamp = "1248523310"
+

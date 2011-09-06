@@ -1,0 +1,14 @@
+; $Id: activitystream_netflix.info,v 1.1 2009/09/19 01:48:17 toddejohnson Exp $
+
+name = Netflix
+description = Show Netflix rentals
+dependencies[] = activitystream
+dependencies[] = activitystream_feed
+package = Activity Stream
+core = 6.x
+; Information added by drupal.org packaging script on 2009-09-19
+version = "6.x-1.0"
+core = "6.x"
+project = "activitystream_netflix"
+datestamp = "1253325303"
+

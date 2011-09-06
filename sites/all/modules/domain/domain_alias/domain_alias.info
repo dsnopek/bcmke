@@ -1,0 +1,13 @@
+; $Id: domain_alias.info,v 1.2 2008/10/10 20:19:28 agentken Exp $
+name = "Domain Alias"
+description = "Advanced domain matching methods for Domain Access."
+core = 6.x
+package = Domain Access
+dependencies[] = domain
+
+; Information added by drupal.org packaging script on 2010-05-16
+version = "6.x-2.5"
+core = "6.x"
+project = "domain"
+datestamp = "1274027105"
+

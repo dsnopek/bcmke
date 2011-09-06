@@ -1,0 +1,183 @@
+<?php
+// $Id: statistics_advanced.test,v 1.1.2.6 2009/04/25 20:55:09 davereid Exp $
+
+/**
+ * @file
+ * Unit tests for the statistics_advanced module.
+ */
+
+/**
+ * Test basic statistics advanced functionality.
+ */
+class StatisticsAdvancedTestCase extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => t('Statistics advanced settings functionality'),
+      'description' => t('Test basic statistics advanced settings module functionality.'),
+      'group' => t('Statistics advanced settings'),
+    );
+  }
+
+  function setUp() {
+    parent::setUp('statistics', 'statistics_advanced');
+
+    // Set some required core statistics module variables.
+    variable_set('statistics_count_content_views', 1);
+    variable_set('statistics_enable_access_log', 1);
+
+  }
+
+  function testNodeCounter() {
+    // Set anonymous user permissions to view post access counter.
+    //db_query("DELETE FROM {permission} WHERE rid = %d", DRUPAL_ANONYMOUS_RID);
+    //db_query("INSERT INTO {permission} (rid, perm) VALUES (%d, '%s')", DRUPAL_ANONYMOUS_RID, 'access content, view post access counter');
+    db_query("UPDATE {permission} SET perm = '%s' WHERE rid = %d", array(':rid' => DRUPAL_ANONYMOUS_RID, ':perms' => 'access content, view post access counter'));
+    $hits = 0;
+
+    $node = $this->drupalCreateNode();
+
+    // Test one unique and one repeat view from an anonymous user.
+    $this->assertNodeCount($node->nid, ++$hits);
+    $this->assertNodeCount($node->nid, $hits);
+
+    // Test one unique and one repeat view from a logged-in user.
+    $user1 = $this->drupalCreateUser(array('access content'));
+    $this->drupalLogin($user1);
+    $this->assertNodeCount($node->nid, ++$hits);
+    $this->assertNodeCount($node->nid, $hits);
+
+    // Update node->changed.
+    //db_query("UPDATE {node} SET changed = %d WHERE nid = %d", array(':changed' => time(), ':nid' => $node->nid));
+    //$this->assertNodeCount($node->nid, ++$hits);
+
+    // Test repeat view from the same user when logged out.
+    $this->drupalLogout();
+    $this->assertNodeCount($node->nid, $hits);
+    $this->assertNodeCount($node->nid, $hits);
+
+    // Log in as a new user, but do not visit any content.
+    $user2 = $this->drupalCreateUser(array('access content'));
+    $this->drupalLogin($user2);
+    $this->drupalLogout();
+
+    // Test one unique and one repeate view as logged out new user.
+    $this->assertNodeCount($node->nid, ++$hits);
+    $this->assertNodeCount($node->nid, $hits);
+
+    // Test that anonymous views when access log is disabled should always increment.
+    variable_set('statistics_enable_access_log', 0);
+    //db_query("DELETE FROM {accesslog}");
+    $this->assertNodeCount($node->nid, ++$hits);
+    $this->assertNodeCount($node->nid, ++$hits);
+  }
+
+  /**
+   * Test that an invalid nodes will not cause a record to be added to the
+   * node_counter table.
+   */
+  function testInvalidNodeCounter() {
+    // Remove 'access content' for anonymous users.
+    db_query("DELETE FROM {permission} WHERE rid = %d", DRUPAL_ANONYMOUS_RID);
+
+    // Create a node.
+    $valid_node = $this->drupalCreateNode();
+
+    // Attempt to access an invalid node. Should get a 404 response.
+    $this->assertNodeCount(666, 0);
+    $this->assertResponse(404);
+
+    // Attempt to access a node without access. Should get a 403 response.
+    $this->assertNodeCount($valid_node->nid, 0);
+    $this->assertResponse(403);
+  }
+
+  /**
+   * Test user exclusion from the access log.
+   */
+  /*function testAccessLogExclusion() {
+    $user1 = $this->drupalCreateUser(array('access content'));
+    $this->drupalLogin($user1);
+    $user1->sid = db_result(db_query("SELECT sid FROM {sessions} WHERE uid = %d ORDER BY ", array(':uid' => $user1->uid)));
+
+    $this->drupalGet('');
+    $accesslog_entries = db_result(db_query("SELECT COUNT(*) FROM {accesslog} WHERE sid = '%s'", array(':sid' => $user1->sid)));
+    $this->assertTrue($accesslog_entries, t('Access log entries found'));
+
+    // Set anonymous user permissions to view post access counter.
+    //db_query("DELETE FROM {permission} WHERE rid = %d", DRUPAL_AUTHENTICATED_RID);
+    db_query("UPDATE {permission} SET perm = '%s' WHERE rid = %d", array(':rid' => DRUPAL_AUTHENTICATED_RID, ':perms' => 'access content, exclude visits from the access log'));
+
+    $this->drupalGet('');
+    $accesslog_entries = db_result(db_query("SELECT COUNT(*) FROM {accesslog} WHERE sid = '%s'", array(':sid' => $user1->sid)));
+    $this->assertFalse($accesslog_entries, t('No access log entries found'));
+  }*/
+
+  /**
+   * Private function to test node counters.
+   *
+   * @param $nid
+   *   An integer with the node ID.
+   * @param $count
+   *   An integer with the expected node counter value.
+   */
+  private function assertNodeCount($nid, $count) {
+    $this->drupalGet("node/$nid");
+    $db_count = db_result(db_query("SELECT totalcount FROM {node_counter} WHERE nid = %d", $nid));
+    $this->assertEqual($db_count, $count, t('Node @nid counter expected @expected-count, actual @actual-count.', array('@actual-count' => $db_count, '@expected-count' => $count, '@nid' => $nid)));
+  }
+}
+
+/**
+ * Test basic statistics advanced functionality.
+ */
+/*class StatisticsAdvancedAdminTestCase extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => t('Statistics advanced settings administration'),
+      'description' => t('Test statistics advanced settings module administration.'),
+      'group' => t('Statistics advanced settings'),
+    );
+  }
+
+  function setUp() {
+    parent::setUp('statistics', 'statistics_advanced');
+    $this->user_admin = $this->drupalCreateUser(array('access content', 'view post access counter', 'administer site configuration'));
+    $this->node = $this->drupalCreateNode();
+  }
+
+  function testAdminInterface() {
+    // Visit node once.
+    $this->drupalLogin($this->user_admin);
+    $this->drupalGet("node/{$this->node->nid}");
+
+    // Test node counters are not empty and then clear them.
+    $counters = db_result(db_query("SELECT COUNT(*) FROM {node_counter}"));
+    $this->assertNotEqual($counters, 0, t('Node counters are not empty.'));
+    $this->drupalPost('admin/reports/settings/advanced', array(), t('Reset all node counters'));
+
+    $this->assertText(t('Node counters reset.'), t('Reset message found.'));
+    $counters = db_result(db_query("SELECT COUNT(*) FROM {node_counter}"));
+    $this->assertEqual($counters, 0, t('Node counters are empty.'));
+  }
+}*/
+
+/*if (($file = db_result(db_query("SELECT filename FROM {system} WHERE type = 'module' AND name = 'browscap'"))) && file_exists($file)) {
+  class StatisticsAdvancedBrowscapTestCase extends DrupalWebTestCase {
+    public static function getInfo() {
+      return array(
+        'name' => t('Statistics advanced browscap settings functionality'),
+        'description' => t('Test statistics advanced settings module functionality.'),
+        'group' => t('Statistics advanced settings'),
+        'requires' => array('browscap'),
+      );
+    }
+
+    function setUp() {
+      parent::setUp('statistics', 'statistics_advanced', 'browscap');
+    }
+
+    function testIntegration() {
+      $this->assertTrue(module_exists('browscap'), 'Browscap enabled');
+    }
+  }
+}*/

@@ -1,0 +1,11 @@
+name = Rules Scheduler
+description = Schedule the execution of rule sets.
+dependencies[] = rules
+package = Rules
+core = 6.x
+; Information added by drupal.org packaging script on 2011-08-08
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "rules"
+datestamp = "1312806120"
+
